@@ -3,6 +3,19 @@
 import { useState, useMemo } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+type School = {
+  id: number;
+  name: string;
+  code: string;
+  mandal: string;
+  pdfSubmitted: boolean;
+  meals: {
+    breakfast: number;
+    lunch: number;
+    snacks: number;
+    dinner: number;
+  };
+};
 
 export default function DistrictMealMonitoring() {
 
@@ -83,27 +96,28 @@ export default function DistrictMealMonitoring() {
   const totalPending = filteredSchools.length - totalVerified;
 
   // 🔹 Generate Single School PDF
-  const generatePDF = (school) => {
-    const doc = new jsPDF();
-    doc.text("School Meal Monitoring Report", 14, 15);
-    doc.text(`School: ${school.name}`, 14, 25);
-    doc.text(`School Code: ${school.code}`, 14, 32);
-    doc.text(`Mandal: ${school.mandal}`, 14, 39);
-    doc.text(`Date: ${selectedDate}`, 14, 46);
+  const generatePDF = (school: School) => {
+  const doc = new jsPDF();
 
-    autoTable(doc, {
-      startY: 55,
-      head: [["Meal Type", "Count"]],
-      body: [
-        ["Breakfast", school.meals.breakfast],
-        ["Lunch", school.meals.lunch],
-        ["Snacks", school.meals.snacks],
-        ["Dinner", school.meals.dinner],
-      ],
-    });
+  doc.text("School Meal Monitoring Report", 14, 15);
+  doc.text(`School: ${school.name}`, 14, 25);
+  doc.text(`School Code: ${school.code}`, 14, 32);
+  doc.text(`Mandal: ${school.mandal}`, 14, 39);
+  doc.text(`Date: ${selectedDate}`, 14, 46);
 
-    doc.save(`${school.code}_Meal_Report.pdf`);
-  };
+  autoTable(doc, {
+    startY: 55,
+    head: [["Meal Type", "Count"]],
+    body: [
+      ["Breakfast", school.meals.breakfast],
+      ["Lunch", school.meals.lunch],
+      ["Snacks", school.meals.snacks],
+      ["Dinner", school.meals.dinner],
+    ],
+  });
+
+  doc.save(`${school.code}_Meal_Report.pdf`);
+};
 
   // 🔹 Download All Verified PDFs
   const downloadAllVerified = () => {

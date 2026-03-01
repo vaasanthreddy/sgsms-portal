@@ -13,7 +13,7 @@ export default function Password() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const validatePassword = (password) => {
+  const validatePassword = (password:string) => {
     const minLength = password.length >= 8;
     const hasNumber = /\d/.test(password);
     const hasUpper = /[A-Z]/.test(password);

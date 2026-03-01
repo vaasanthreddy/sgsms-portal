@@ -446,21 +446,21 @@ export default function ReportsPage() {
                   <td className="border p-2 text-center">{index + 1}</td>
                   <td className="border p-2">{date}</td>
 
-                  {["breakfast","lunch","snacks","dinner"].map((meal) => (
-                    <td key={meal} className="border p-2">
-                      <div className="grid grid-cols-2 gap-1">
-                        {Array.from({
-                          length: weeklyMenuItems[meal]
-                        }).map((_, i) => (
-                          <img
-                            key={i}
-                            src="/meal.jpg"
-                            className="w-14 h-14 rounded object-cover"
-                          />
-                        ))}
-                      </div>
-                    </td>
-                  ))}
+                  {(["breakfast", "lunch", "snacks", "dinner"] as const).map((meal) => (
+  <td key={meal} className="border p-2">
+    <div className="grid grid-cols-2 gap-1">
+      {Array.from({
+        length: weeklyMenuItems[meal]
+      }).map((_, i) => (
+        <img
+          key={i}
+          src="/meal.jpg"
+          className="w-14 h-14 rounded object-cover"
+        />
+      ))}
+    </div>
+  </td>
+))}
 
                 </tr>
               ))}

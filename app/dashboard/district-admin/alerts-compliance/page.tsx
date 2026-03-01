@@ -1,6 +1,18 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+
+type AlertType = {
+  id: number;
+  alertId: string;
+  schoolCode: string;
+  schoolName: string;
+  mandal: string;
+  type: string;
+  description: string;
+  severity: string;
+  status: string;
+};
 
 export default function AlertsCompliance() {
 
@@ -13,13 +25,13 @@ export default function AlertsCompliance() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedAlert, setSelectedAlert] = useState(null);
+  const [selectedAlert, setSelectedAlert] = useState<AlertType | null>(null);
 
   const rowsPerPage = 20;
 
   // ------------------ DATA ------------------
 
-  const alerts = useMemo(() => {
+  const alerts = useMemo<AlertType[]>(() => {
     const types = ["Financial", "Meal", "Attendance", "Infrastructure"];
     const severities = ["Critical", "High", "Medium", "Low"];
     const statuses = ["Open", "Under Review", "Resolved"];
@@ -39,27 +51,37 @@ export default function AlertsCompliance() {
 
   // ------------------ FILTER ------------------
 
-  const filteredAlerts = alerts.filter((alert) => {
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter((alert) => {
+      const matchesSearch =
+        alert.schoolName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        alert.schoolCode.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesSearch =
-      alert.schoolName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      alert.schoolCode.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType =
+        typeFilter === "All" || alert.type === typeFilter;
 
-    const matchesType =
-      typeFilter === "All" || alert.type === typeFilter;
+      const matchesSeverity =
+        severityFilter === "All" || alert.severity === severityFilter;
 
-    const matchesSeverity =
-      severityFilter === "All" || alert.severity === severityFilter;
+      const matchesStatus =
+        statusFilter === "All" || alert.status === statusFilter;
 
-    const matchesStatus =
-      statusFilter === "All" || alert.status === statusFilter;
+      return matchesSearch && matchesType && matchesSeverity && matchesStatus;
+    });
+  }, [alerts, searchTerm, typeFilter, severityFilter, statusFilter]);
 
-    return matchesSearch && matchesType && matchesSeverity && matchesStatus;
-  });
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, typeFilter, severityFilter, statusFilter]);
 
   // ------------------ PAGINATION ------------------
 
-  const totalPages = Math.ceil(filteredAlerts.length / rowsPerPage);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredAlerts.length / rowsPerPage)
+  );
+
   const paginatedAlerts = filteredAlerts.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
@@ -74,11 +96,11 @@ export default function AlertsCompliance() {
 
   const resolutionRate =
     totalAlerts === 0 ? 0 :
-    Math.round((resolvedCases / totalAlerts) * 100);
+      Math.round((resolvedCases / totalAlerts) * 100);
 
   const pendingRate =
     totalAlerts === 0 ? 0 :
-    Math.round((pendingCompliance / totalAlerts) * 100);
+      Math.round((pendingCompliance / totalAlerts) * 100);
 
   // ------------------ UI ------------------
 
@@ -200,7 +222,7 @@ export default function AlertsCompliance() {
         <div className="flex justify-center mt-6 gap-4">
           <button
             disabled={currentPage === 1}
-            onClick={() => setCurrentPage(currentPage - 1)}
+            onClick={() => setCurrentPage(prev => prev - 1)}
             className="bg-gray-400 text-white px-4 py-2 rounded disabled:opacity-50">
             Prev
           </button>
@@ -211,62 +233,11 @@ export default function AlertsCompliance() {
 
           <button
             disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage(currentPage + 1)}
+            onClick={() => setCurrentPage(prev => prev + 1)}
             className="bg-gray-600 text-white px-4 py-2 rounded disabled:opacity-50">
             Next
           </button>
         </div>
-      </div>
-
-      {/* ===================== ADVANCED ANALYTICS ===================== */}
-
-      {/* SEVERITY DISTRIBUTION */}
-      <div className="bg-white shadow-xl rounded-xl p-6 mt-10">
-        <h2 className="text-xl font-bold text-purple-700 mb-6">
-          Severity Distribution Overview
-        </h2>
-
-        {["Critical", "High", "Medium", "Low"].map((level) => {
-          const count = alerts.filter(a => a.severity === level).length;
-          const percent = Math.round((count / alerts.length) * 100);
-
-          return (
-            <div key={level} className="mb-4">
-              <div className="flex justify-between text-sm font-medium">
-                <span>{level}</span>
-                <span>{count} Alerts</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3 mt-1">
-                <div
-                  className="bg-purple-600 h-3 rounded-full"
-                  style={{ width: `${percent}%` }}
-                ></div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* TOP 5 SCHOOLS */}
-      <div className="bg-white shadow-xl rounded-xl p-6 mt-10 mb-10">
-        <h2 className="text-xl font-bold text-red-700 mb-6">
-          Top 5 Schools with Highest Alerts
-        </h2>
-
-        {Object.entries(
-          alerts.reduce((acc, alert) => {
-            acc[alert.schoolName] = (acc[alert.schoolName] || 0) + 1;
-            return acc;
-          }, {})
-        )
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([school, count]) => (
-            <div key={school} className="flex justify-between border-b py-2">
-              <span className="font-medium">{school}</span>
-              <span className="text-red-600 font-bold">{count} Alerts</span>
-            </div>
-          ))}
       </div>
 
       {/* MODAL */}
@@ -295,7 +266,12 @@ export default function AlertsCompliance() {
 
 /* COMPONENTS */
 
-function SummaryCard({ title, value, color }) {
+function SummaryCard({ title, value, color }: {
+  title: string;
+  value: number;
+  color: "blue" | "red" | "yellow" | "green";
+}) {
+
   const colorMap = {
     blue: "text-blue-600",
     red: "text-red-600",
@@ -313,8 +289,8 @@ function SummaryCard({ title, value, color }) {
   );
 }
 
-function SeverityBadge({ severity }) {
-  const map = {
+function SeverityBadge({ severity }: { severity: string }) {
+  const map: Record<string, string> = {
     Critical: "bg-red-100 text-red-700",
     High: "bg-orange-100 text-orange-700",
     Medium: "bg-yellow-100 text-yellow-700",
@@ -322,21 +298,21 @@ function SeverityBadge({ severity }) {
   };
 
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${map[severity]}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${map[severity] || ""}`}>
       {severity}
     </span>
   );
 }
 
-function StatusBadge({ status }) {
-  const map = {
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
     Open: "bg-red-100 text-red-700",
     "Under Review": "bg-yellow-100 text-yellow-700",
     Resolved: "bg-green-100 text-green-700",
   };
 
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${map[status]}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${map[status] || ""}`}>
       {status}
     </span>
   );

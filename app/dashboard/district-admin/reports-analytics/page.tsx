@@ -8,9 +8,9 @@ export default function ReportsAnalytics() {
     new Date().toISOString().split("T")[0]
   );
 
-  const [expandedSchool, setExpandedSchool] = useState(null);
+  const [expandedSchool, setExpandedSchool] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState("");
-  const [selectedMandalAnalytics, setSelectedMandalAnalytics] = useState(null);
+  const [selectedMandalAnalytics, setSelectedMandalAnalytics] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMandal, setSelectedMandal] = useState("All");
@@ -60,7 +60,7 @@ export default function ReportsAnalytics() {
     })
     .sort((a, b) => b.satisfaction - a.satisfaction);
 
-  const totalPages = Math.ceil(filteredSchools.length / rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredSchools.length / rowsPerPage));
 
   const paginatedSchools = filteredSchools.slice(
     (currentPage - 1) * rowsPerPage,
@@ -69,7 +69,7 @@ export default function ReportsAnalytics() {
 
   // ---------------- STUDENT GENERATOR ----------------
 
-  const generateStudents = (className) => {
+  const generateStudents = (className: string) => {
     return Array.from({ length: 25 }, (_, i) => ({
       id: `${className}-STU-${i + 1}`,
       name: `Student ${i + 1}`,
@@ -81,7 +81,7 @@ export default function ReportsAnalytics() {
 
   const mandalAnalytics = useMemo(() => {
 
-    const grouped = {};
+    const grouped: Record<string, number[]> = {};
 
     schools.forEach((s) => {
       if (!grouped[s.mandal]) grouped[s.mandal] = [];
@@ -99,11 +99,12 @@ export default function ReportsAnalytics() {
 
   }, [schools]);
 
-  const mandalSchools =
-    selectedMandalAnalytics &&
-    schools
-      .filter((s) => s.mandal === selectedMandalAnalytics)
-      .sort((a, b) => b.satisfaction - a.satisfaction);
+ const mandalSchools =
+  selectedMandalAnalytics !== null
+    ? schools
+        .filter((s) => s.mandal === selectedMandalAnalytics)
+        .sort((a, b) => b.satisfaction - a.satisfaction)
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -231,7 +232,7 @@ export default function ReportsAnalytics() {
                 {/* EXPAND ROW */}
                 {expandedSchool === school.id && (
                   <tr>
-                    <td colSpan="8" className="border p-4 bg-gray-50">
+                    <td colSpan={8} className="border p-4 bg-gray-50">
 
                       <div className="mb-4">
                         <label className="mr-2 font-semibold">

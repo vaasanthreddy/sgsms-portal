@@ -9,7 +9,7 @@ export default function Administration() {
   const [searchSchool, setSearchSchool] = useState("");
   const [selectedMandal, setSelectedMandal] = useState("All");
   const [notification, setNotification] = useState("");
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
   const [schools, setSchools] = useState(
     Array.from({ length: 300 }, (_, i) => ({
@@ -32,7 +32,7 @@ export default function Administration() {
 
   // ---------------- ACTIONS ----------------
 
-  const toggleSchoolStatus = (id) => {
+  const toggleSchoolStatus = (id: number) => {
     setSchools((prev) =>
       prev.map((s) =>
         s.id === id
@@ -56,11 +56,11 @@ export default function Administration() {
     ]);
   };
 
-  const removeSchool = (id) => {
+  const removeSchool = (id: number) => {
     setSchools((prev) => prev.filter((s) => s.id !== id));
   };
 
-  const transferMandal = (id) => {
+  const transferMandal = (id: number) => {
     setSchools((prev) =>
       prev.map((s) =>
         s.id === id
