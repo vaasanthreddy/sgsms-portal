@@ -9,8 +9,8 @@ export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: { email : email },
     });
 
     if (!user) {
@@ -29,17 +29,21 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔐 Create JWT token
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+      return NextResponse.json(
+        { error: "JWT secret not configured" },
+        { status: 500 }
+      );
+    }
+
     const token = jwt.sign(
-      {
-        userId: user.id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET as string,
+      { userId: user.id, role: user.role },
+      secret,
       { expiresIn: "1d" }
     );
 
-    // 🍪 Store token in cookie
     const response = NextResponse.json({
       message: "Login successful",
       role: user.role,
@@ -47,7 +51,7 @@ export async function POST(req: Request) {
 
     response.cookies.set("token", token, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: "lax",
       path: "/",
     });
@@ -55,7 +59,8 @@ export async function POST(req: Request) {
     return response;
 
   } catch (error) {
-    console.error(error);
+    console.error("LOGIN ERROR:", error);
+
     return NextResponse.json(
       { error: "Server error" },
       { status: 500 }
