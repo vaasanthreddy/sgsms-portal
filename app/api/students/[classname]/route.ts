@@ -5,24 +5,15 @@ const prisma = new PrismaClient();
 
 export async function GET(
   request: Request,
-  context: { params: { classname: string } }
+  { params }: { params: Promise<{ classname: string }> }
 ) {
-  try {
-    const { classname } = context.params;
+  const { classname } = await params;
 
-    const students = await prisma.student.findMany({
-      where: {
-        class: classname,
-      },
-    });
+  const students = await prisma.student.findMany({
+    where: {
+      class: classname,
+    },
+  });
 
-    return NextResponse.json(students);
-  } catch (error) {
-    console.error(error);
-
-    return NextResponse.json(
-      { error: "Failed to fetch students" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(students);
 }
