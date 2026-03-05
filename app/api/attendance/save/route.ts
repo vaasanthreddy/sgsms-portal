@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
@@ -11,8 +9,8 @@ export async function POST(req: Request) {
 
     const records = students.map((s: any) => ({
       studentId: s.id,
-      className: className,
-      meal: meal,
+      className,
+      meal,
       status: attendance[s.id],
       photo: s.photo || null,
       date: new Date(),
