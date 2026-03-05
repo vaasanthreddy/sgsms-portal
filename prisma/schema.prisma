@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String
+  schoolId  String?
+  school    School?  @relation(fields: [schoolId], references: [id])
+  createdAt DateTime @default(now())
+
+  attendance    Attendance[] @relation("UserAttendance")
+  notifications Notification[]
+}
+
+model School {
+  id        String   @id @default(uuid())
+  name      String
+  district  String
+  location  String
+  createdAt DateTime @default(now())
+
+  users    User[]
+  students Student[]
+  meals    Meal[]
+  alerts   Alert[]
+  menus    Menu[]
+}
+
+model Student {
+  id            String   @id @default(uuid())
+  name          String
+  class         String
+  parentContact String
+  schoolId      String
+  school        School   @relation(fields: [schoolId], references: [id])
+
+  attendance    Attendance[]
+}
+
+model Menu {
+  id          String  @id @default(uuid())
+  schoolId    String
+  school      School  @relation(fields: [schoolId], references: [id])
+  dayOfWeek   String
+  defaultMenu String
+}
+
+model Meal {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id])
+  date      DateTime
+  menu      String
+  imageUrl  String
+  timestamp DateTime @default(now())
+}
+
+model Attendance {
+  id         String   @id @default(uuid())
+
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+
+  className  String
+  meal       String        // Breakfast / Lunch / Snacks / Dinner
+
+  status     String        // Present / Absent
+  photo      String?       // Base64 image (optional)
+
+  date       DateTime      @default(now())
+
+  userId     String?
+  user       User?         @relation("UserAttendance", fields: [userId], references: [id])
+
+  createdAt  DateTime      @default(now())
+}
+
+model Notification {
+  id       String   @id @default(uuid())
+  parentId String
+  parent   User     @relation(fields: [parentId], references: [id])
+  message  String
+  date     DateTime @default(now())
+}
+
+model Alert {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id])
+  issueType String
+  date      DateTime @default(now())
+}

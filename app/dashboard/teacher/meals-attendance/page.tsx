@@ -3,30 +3,70 @@
 import { useState, useRef, useEffect } from "react";
 
 export default function SmartAttendanceSystem() {
+  /* =============================
+   MEAL SYSTEM
+============================== */
+
+const DEV_MODE = true; // set false in production
+
+const mealTimings = {
+  Breakfast: { start: 7, end: 10 },
+  Lunch: { start: 12, end: 14.5 },
+  Snacks: { start: 16, end: 17.5 },
+  Dinner: { start: 19, end: 21 },
+};
+
+const getCurrentMeal = () => {
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes() / 60;
+
+  for (const meal in mealTimings) {
+    const { start, end } = mealTimings[meal as keyof typeof mealTimings];
+    if (hour >= start && hour <= end) return meal;
+  }
+
+  return "No Active Meal";
+};
+
+const [manualMeal, setManualMeal] = useState("Breakfast");
+const activeMeal = DEV_MODE ? manualMeal : getCurrentMeal();
+
+  const [attendance, setAttendance] = useState<{ [key: string]: string }>({});
+
+  const markAttendance = (studentId: number, status: string) => {
+    if (locked) return;
+
+    setAttendance((prev) => ({
+      ...prev,
+      [studentId]: status,
+    }));
+
+    // also update students array (so submit validation works properly)
+    const updated = [...students];
+    const index = updated.findIndex(s => s.id === studentId);
+    if (index !== -1) {
+      updated[index].status = status;
+    }
+    setStudents(updated);
+  };
 
   /* =============================
      CLASS STRUCTURE
   ============================== */
-  const classStrength: Record<string, number> = {
-    "LKG": 25,
-    "UKG": 28,
-    "First Class": 40,
-    "Second Class": 38,
-    "Third Class": 42,
-    "Fourth Class": 35,
-    "Fifth Class": 37,
-    "Sixth Class A": 45,
-    "Sixth Class B": 43,
-    "Seventh Class A": 41,
-    "Seventh Class B": 39,
-    "Eighth Class A": 44,
-    "Eighth Class B": 42,
-    "Ninth Class A": 36,
-    "Ninth Class B": 34,
-    "Tenth Class A": 30,
-    "Tenth Class B": 29
-  };
-
+ const classStrength: Record<string, number> = {
+  "LKG": 25,
+  "UKG": 28,
+  "1st": 40,
+  "2nd": 38,
+  "3rd": 42,
+  "4th": 35,
+  "5th": 37,
+  "6th": 45,
+  "7th": 41,
+  "8th": 44,
+  "9th": 36,
+  "10th": 30
+};
   const [selectedClass, setSelectedClass] = useState("");
   const [classSelected, setClassSelected] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
@@ -38,6 +78,7 @@ export default function SmartAttendanceSystem() {
   /* =============================
      CAMERA + GEO
   ============================== */
+
   const [cameraIndex, setCameraIndex] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,51 +92,133 @@ export default function SmartAttendanceSystem() {
       });
     });
   }, []);
+  const getStorageKey = (cls: string, meal: string) =>
+  `attendance_${cls}_${meal}`;
+
+const restoreSavedData = (cls: string, meal: string) => {
+  const key = getStorageKey(cls, meal);
+  const saved = localStorage.getItem(key);
+
+  if (!saved) return;
+
+  const parsed = JSON.parse(saved);
+  const twoHours = 2 * 60 * 60 * 1000;
+
+  if (Date.now() - parsed.timestamp < twoHours) {
+    setStudents(parsed.students);
+    setAttendance(parsed.attendance);
+    setLocked(true);
+    setSubmitted(true);
+  } else {
+    localStorage.removeItem(key);
+  }
+};
+
 
   /* =============================
      LOAD CLASS
   ============================== */
-  const loadClass = (cls: string) => {
-    setSelectedClass(cls);
-    setClassSelected(true);
+  const loadClass = async (cls: string) => {
+  setSelectedClass(cls);
+  setClassSelected(true);
+  setLocked(false);
+  setSubmitted(false);
+  setAttendance({});
+
+  const res = await fetch(`/api/students?class=${cls}`);
+  const data = await res.json();
+
+  const formatted = data.map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    status: "",
+    photo: null
+  }));
+
+  setStudents(formatted);
+  loadAttendanceForMeal(cls, activeMeal);
+
+  restoreSavedData(cls, activeMeal);
+};
+const loadAttendance = async (cls: string, meal: string) => {
+
+  const res = await fetch(`/api/attendance?class=${cls}&meal=${meal}`);
+  const data = await res.json();
+
+  if (!data || data.length === 0) {
     setLocked(false);
     setSubmitted(false);
+    setAttendance({});
+    return;
+  }
 
-    const count = classStrength[cls];
+  const map: any = {};
 
-    const generated = Array.from({ length: count }, (_, i) => ({
-      id: i + 1,
-      name: `Student ${i + 1}`,
-      status: "",
-      photo: null
-    }));
+  data.forEach((a: any) => {
+    map[a.studentId] = a.status;
+  });
 
-    setStudents(generated);
-  };
+  setAttendance(map);
+  setLocked(true);
+  setSubmitted(true);
+};
+const loadAttendanceForMeal = async (cls: string, meal: string) => {
+  const res = await fetch(`/api/attendance?class=${cls}&meal=${meal}`);
+  const data = await res.json();
 
-  /* =============================
-     UPDATE STATUS
-  ============================== */
-  const updateStatus = (index: number, value: string) => {
-    if (locked) return;
-    const updated = [...students];
-    updated[index].status = value;
-    setStudents(updated);
-  };
+  if (data && data.length > 0) {
+    const updatedStudents = students.map((s) => {
+      const record = data.find((a: any) => a.studentId === s.id);
 
+      return {
+        ...s,
+        status: record ? record.status : "",
+        photo: record ? record.photo : null,
+      };
+    });
+
+    setStudents(updatedStudents);
+
+    const attendanceMap: any = {};
+    data.forEach((a: any) => {
+      attendanceMap[a.studentId] = a.status;
+    });
+
+    setAttendance(attendanceMap);
+  } else {
+    setAttendance({});
+    setStudents((prev) =>
+      prev.map((s) => ({
+        ...s,
+        status: "",
+        photo: null,
+      }))
+    );
+  }
+};
   /* =============================
      CAMERA FUNCTIONS
   ============================== */
   const startCamera = async (index: number) => {
-    setCameraIndex(index);
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    if (videoRef.current) videoRef.current.srcObject = stream;
+    try {
+      setCameraIndex(index);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      alert("Camera permission denied");
+    }
   };
 
   const capturePhoto = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!video || !canvas || cameraIndex === null) return;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -122,54 +245,82 @@ export default function SmartAttendanceSystem() {
     const image = canvas.toDataURL("image/png");
 
     const updated = [...students];
-    updated[cameraIndex!].photo = image;
+    updated[cameraIndex].photo = image;
     setStudents(updated);
 
-    const stream = video.srcObject as MediaStream;
-    stream.getTracks().forEach(track => track.stop());
+    stopCamera();
+  };
 
+  const stopCamera = () => {
+    const stream = videoRef.current?.srcObject as MediaStream;
+    stream?.getTracks().forEach(track => track.stop());
     setCameraIndex(null);
   };
 
   /* =============================
      SUBMIT FUNCTION
   ============================== */
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (submitted) {
       alert("Attendance already submitted.");
       return;
     }
 
     for (let s of students) {
-      if (!s.status) {
+      if (!attendance[s.id]) {
         alert("Mark attendance for all students.");
         return;
       }
-      if (s.status === "Absent" && !s.photo) {
+      if (attendance[s.id] === "Present" && !s.photo) {
         alert(`Photo required for ${s.name}`);
         return;
       }
     }
 
-    const record = {
-      class: selectedClass,
-      date: new Date().toLocaleString(),
-      present: students.filter(s => s.status === "Present").length,
-      absent: students.filter(s => s.status === "Absent").length,
-      total: students.length
-    };
+    try {
+  const res = await fetch("/api/attendance/save", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      className: selectedClass,
+      meal: activeMeal, // we will make dynamic later
+      students,
+      attendance,
+      userId: null, // replace later with logged-in teacher ID
+    }),
+  });
 
-    setAttendanceHistory(prev => [...prev, record]);
+  const data = await res.json();
 
-    setLocked(true);
-    setSubmitted(true);
-    alert("Attendance Submitted Successfully.");
+ if (data.success) {
+
+  const key = getStorageKey(selectedClass, activeMeal);
+
+  localStorage.setItem(
+    key,
+    JSON.stringify({
+      students,
+      attendance,
+      timestamp: Date.now()
+    })
+  );
+
+  setLocked(true);
+  setSubmitted(true);
+
+  alert("Attendance Saved to Database Successfully");
+} else {
+    alert("Failed to save attendance");
+  }
+
+} catch (error) {
+  alert("Server error");
+}
   };
 
-  const presentCount = students.filter(s => s.status === "Present").length;
-  const percentage = selectedClass
-    ? ((presentCount / classStrength[selectedClass]) * 100).toFixed(2)
-    : 0;
+  const presentCount = students.filter(s => attendance[s.id] === "Present").length;
 
   /* =============================
      FIRST SCREEN
@@ -197,22 +348,59 @@ export default function SmartAttendanceSystem() {
       </div>
     );
   }
+/* =============================
+   STORAGE HELPERS
+============================== */
 
   /* =============================
      MAIN LAYOUT
   ============================== */
   return (
     <div className="flex min-h-screen bg-gray-100">
-
-      
-
-      {/* MAIN CONTENT */}
       <div className="flex-1 p-6">
 
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">
             Smart Government Meals Attendance
           </h1>
+          <div className="mb-4">
+  <h2 className="text-lg font-semibold">
+    {selectedClass} - {activeMeal}
+  </h2>
+
+  {DEV_MODE && (
+<select
+  value={manualMeal}
+  onChange={(e) => {
+    const meal = e.target.value;
+
+    setManualMeal(meal);
+
+    // RESET PAGE FOR NEW MEAL
+    setLocked(false);
+    setSubmitted(false);
+    setAttendance({});
+
+    // reset student status & photos
+    setStudents((prev) =>
+      prev.map((s) => ({
+        ...s,
+        status: "",
+        photo: null,
+      }))
+    );
+
+    // load attendance for this meal
+    loadAttendanceForMeal(selectedClass, meal);
+  }}
+>
+      <option>Breakfast</option>
+      <option>Lunch</option>
+      <option>Snacks</option>
+      <option>Dinner</option>
+    </select>
+  )}
+</div>
 
           <button
             onClick={() => setClassSelected(false)}
@@ -222,7 +410,6 @@ export default function SmartAttendanceSystem() {
           </button>
         </div>
 
-        {/* DISTRICT MONITOR VIEW */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-blue-100 p-4 rounded shadow text-center">
             <div>Total Students</div>
@@ -240,7 +427,6 @@ export default function SmartAttendanceSystem() {
           </div>
         </div>
 
-        {/* TABLE */}
         <div className="bg-white shadow rounded p-4 overflow-x-auto">
           <table className="w-full border text-center">
             <thead className="bg-gray-200">
@@ -256,23 +442,23 @@ export default function SmartAttendanceSystem() {
                 <tr key={s.id}>
                   <td className="border p-2">{s.id}</td>
                   <td className="border p-2 text-left px-4">{s.name}</td>
+
                   <td className="border p-2">
                     <button
-                      disabled={locked}
-                      onClick={() => updateStatus(i, "Present")}
-                      className={`px-2 py-1 rounded ${
-                        s.status === "Present"
+                      onClick={() => markAttendance(s.id, "Present")}
+                      className={`px-3 py-1 rounded mr-2 ${
+                        attendance[s.id] === "Present"
                           ? "bg-green-600 text-white"
                           : "bg-gray-200"
                       }`}
                     >
                       Present
                     </button>
+
                     <button
-                      disabled={locked}
-                      onClick={() => updateStatus(i, "Absent")}
-                      className={`px-2 py-1 ml-2 rounded ${
-                        s.status === "Absent"
+                      onClick={() => markAttendance(s.id, "Absent")}
+                      className={`px-3 py-1 rounded ${
+                        attendance[s.id] === "Absent"
                           ? "bg-red-600 text-white"
                           : "bg-gray-200"
                       }`}
@@ -280,14 +466,19 @@ export default function SmartAttendanceSystem() {
                       Absent
                     </button>
                   </td>
+
                   <td className="border p-2">
                     {s.photo ? (
                       <img src={s.photo} className="w-16 mx-auto" />
                     ) : (
                       <button
-                        disabled={locked}
+                        disabled={attendance[s.id] !== "Present"}
                         onClick={() => startCamera(i)}
-                        className="bg-blue-600 text-white px-2 py-1 rounded"
+                        className={`px-3 py-1 rounded text-white ${
+                          attendance[s.id] === "Present"
+                            ? "bg-blue-600"
+                            : "bg-gray-400 cursor-not-allowed"
+                        }`}
                       >
                         Open Camera
                       </button>
@@ -300,55 +491,17 @@ export default function SmartAttendanceSystem() {
         </div>
 
         <button
-          onClick={handleSubmit}
-          disabled={locked}
-          className="bg-blue-700 text-white px-6 py-2 rounded mt-4"
-        >
-          Submit
-        </button>
-
-        <button
-          onClick={() => window.print()}
-          className="bg-gray-700 text-white px-6 py-2 rounded mt-4 ml-3"
-        >
-          Export Report (PDF)
-        </button>
-
-        {/* HISTORY PANEL */}
-        {attendanceHistory.length > 0 && (
-          <div className="mt-8 bg-white shadow rounded p-4">
-            <h2 className="text-lg font-bold mb-3">
-              Attendance History
-            </h2>
-
-            <table className="w-full border text-center">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="border p-2">Class</th>
-                  <th className="border p-2">Date</th>
-                  <th className="border p-2">Present</th>
-                  <th className="border p-2">Absent</th>
-                  <th className="border p-2">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceHistory.map((rec, i) => (
-                  <tr key={i}>
-                    <td className="border p-2">{rec.class}</td>
-                    <td className="border p-2">{rec.date}</td>
-                    <td className="border p-2 text-green-600">{rec.present}</td>
-                    <td className="border p-2 text-red-600">{rec.absent}</td>
-                    <td className="border p-2">{rec.total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+  onClick={handleSubmit}
+  disabled={locked}
+  className={`px-6 py-2 rounded mt-4 text-white ${
+    submitted ? "bg-green-600" : "bg-blue-700"
+  }`}
+>
+  {submitted ? "Attendance Submitted" : "Submit"}
+</button>
 
       </div>
 
-      {/* CAMERA MODAL */}
       {cameraIndex !== null && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center">
           <div className="bg-white p-4 rounded">
@@ -362,7 +515,7 @@ export default function SmartAttendanceSystem() {
                 Capture
               </button>
               <button
-                onClick={() => setCameraIndex(null)}
+                onClick={stopCamera}
                 className="bg-red-600 text-white px-3 py-1 rounded"
               >
                 Cancel
@@ -371,7 +524,6 @@ export default function SmartAttendanceSystem() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

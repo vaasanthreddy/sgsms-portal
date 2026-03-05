@@ -120,27 +120,50 @@ export default function TodayMealsPage() {
     stream?.getTracks().forEach(track => track.stop());
     setCameraOpen(false);
   };
+const schoolId = "a833c50d-8faf-4706-8469-14d1920b3022";
+ const handleSubmit = async (meal: string) => {
+  const requiredItems = todayMenu[meal as keyof typeof todayMenu];
+  const photos = mealPhotos[meal] || {};
 
-  const handleSubmit = (meal: string) => {
-    const requiredItems = todayMenu[meal as keyof typeof todayMenu];
-    const photos = mealPhotos[meal] || {};
+  const allUploaded = requiredItems.every(
+    (item: string) => photos[item]
+  );
 
-    const allUploaded = requiredItems.every(
-      (item: string) => photos[item]
-    );
+  if (!allUploaded) {
+    alert("Upload all menu item photos before submitting.");
+    return;
+  }
 
-    if (!allUploaded) {
-      alert("Upload all menu item photos before submitting.");
-      return;
+  try {
+    for (const item of requiredItems) {
+      const base64Image = photos[item];
+
+      const response = await fetch(base64Image);
+      const blob = await response.blob();
+
+      const formData = new FormData();
+      formData.append("file", blob);
+      formData.append("menu", `${meal} - ${item}`);
+      formData.append("schoolId", schoolId);
+
+      await fetch("/api/meals/upload", {
+        method: "POST",
+        body: formData,
+      });
     }
 
     setSubmittedMeals((prev: any) => ({
       ...prev,
-      [meal]: true
+      [meal]: true,
     }));
-  };
 
-  return (
+    alert(`${meal} submitted successfully`);
+
+  } catch (error) {
+    console.error(error);
+    alert("Upload failed");
+  }
+}; return (
     <div>
       <h1 className="text-3xl font-bold text-blue-900 mb-8">
         Today Meals ({todayDay})
