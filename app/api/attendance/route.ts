@@ -12,16 +12,14 @@ export async function GET(req: Request) {
 
     const attendance = await prisma.attendance.findMany({
       where: {
-        className: className || undefined,
-        meal: meal || undefined
-      }
+        className: className ?? undefined,
+        meal: meal ?? undefined,
+      },
     });
 
     return NextResponse.json(attendance);
-
   } catch (error) {
     console.error("Attendance API error:", error);
-
     return NextResponse.json(
       { error: "Failed to fetch attendance" },
       { status: 500 }
