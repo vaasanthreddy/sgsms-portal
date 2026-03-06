@@ -24,7 +24,7 @@ export default function TeacherLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [time, setTime] = useState("");
@@ -94,9 +94,9 @@ useEffect(() => {
         {/* LEFT */}
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="hover:rotate-90 transition duration-300"
-          >
+  onClick={() => setSidebarOpen(!sidebarOpen)}
+  className="hover:rotate-90 transition duration-300"
+>
             <Menu size={26} />
           </button>
 
@@ -158,48 +158,52 @@ useEffect(() => {
       {/* BODY */}
       <div className="flex flex-1">
 
-        {/* SIDEBAR */}
-        <div
-          className={`bg-white border-r shadow-lg transition-all duration-500 
-            ${collapsed || isMobile ? "w-20" : "w-64"}`
-          }
+       {/* SIDEBAR */}
+<div
+  className={`fixed md:relative z-40 bg-white border-r shadow-lg h-full
+  transform transition-transform duration-300
+  ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+  md:translate-x-0 w-64`}
+>
+
+  <nav className="p-4 space-y-3">
+
+    {menuItems.map((item) => {
+      const Icon = item.icon;
+      const active = pathname === item.path;
+
+      return (
+        <Link
+          key={item.path}
+          href={item.path}
+          onClick={() => {
+            if (window.innerWidth < 768) {
+              setSidebarOpen(false);
+            }
+          }}
+          className={`flex items-center gap-3 p-3 rounded transition ${
+            active
+              ? "bg-blue-700 text-white"
+              : "text-gray-700 hover:bg-blue-200 hover:text-blue-900"
+          }`}
         >
-          <nav className="p-4 space-y-3">
+          <Icon size={22} />
+          <span>{item.name}</span>
+        </Link>
+      );
+    })}
 
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const active = pathname === item.path;
-
-              return (
-                <Link
-  key={item.path}
-  href={item.path}
-  onClick={() => {
-    if (isMobile) setCollapsed(true);
-  }}
-  className={`group relative flex items-center gap-3 p-2 rounded transition ${
-                    active
-                      ? "bg-blue-700 text-white border-l-4 border-blue-900"
-                      : "text-gray-700 hover:bg-blue-200 hover:text-blue-900"
-                  }`}
-                >
-                  <Icon size={22} />
-
-                  {!collapsed && <span>{item.name}</span>}
-
-                  {collapsed && (
-                    <span className="absolute left-16 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition">
-                      {item.name}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+  </nav>
+</div>
+{sidebarOpen && (
+  <div
+    className="fixed inset-0 bg-black/40 md:hidden"
+    onClick={() => setSidebarOpen(false)}
+  />
+)}
 
         {/* CONTENT */}
-        <div className="flex-1 p-4 md:p-6 max-w-[1400px] mx-auto w-full">
+        <div className="flex-1 p-4 md:p-6 max-w-[1400px] mx-auto w-full bg-white text-black dark:bg-gray-900 dark:text-white">
           {children}
         </div>
       </div>
