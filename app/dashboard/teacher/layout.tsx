@@ -25,6 +25,7 @@ export default function TeacherLayout({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [time, setTime] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -41,6 +42,18 @@ export default function TeacherLayout({
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Detect mobile screen
+useEffect(() => {
+  const checkMobile = () => {
+    setIsMobile(window.innerWidth < 768);
+  };
+
+  checkMobile();
+  window.addEventListener("resize", checkMobile);
+
+  return () => window.removeEventListener("resize", checkMobile);
+}, []);
 
   // Close dropdown outside click
   useEffect(() => {
@@ -76,7 +89,7 @@ export default function TeacherLayout({
     <div className="min-h-screen bg-gray-100 flex flex-col">
 
       {/* HEADER */}
-      <div className="bg-blue-900 text-white shadow-xl px-6 py-3 flex justify-between items-center">
+      <div className="bg-blue-900 text-white shadow-xl px-6 py-3 flex justify-between items-center sticky top-0 z-50">
 
         {/* LEFT */}
         <div className="flex items-center gap-4">
@@ -96,7 +109,7 @@ export default function TeacherLayout({
             />
 
             <div>
-              <div className="font-bold text-lg">
+             <div className="font-bold text-sm md:text-lg">
                 Smart Government School Management System
               </div>
               <div className="text-xs text-blue-200">
@@ -147,9 +160,9 @@ export default function TeacherLayout({
 
         {/* SIDEBAR */}
         <div
-          className={`bg-white border-r shadow-lg transition-all duration-300 ${
-            collapsed ? "w-20" : "w-64"
-          }`}
+          className={`bg-white border-r shadow-lg transition-all duration-500 
+            ${collapsed || isMobile ? "w-20" : "w-64"}`
+          }
         >
           <nav className="p-4 space-y-3">
 
@@ -159,15 +172,18 @@ export default function TeacherLayout({
 
               return (
                 <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`group relative flex items-center gap-3 p-2 rounded transition ${
+  key={item.path}
+  href={item.path}
+  onClick={() => {
+    if (isMobile) setCollapsed(true);
+  }}
+  className={`group relative flex items-center gap-3 p-2 rounded transition ${
                     active
                       ? "bg-blue-700 text-white border-l-4 border-blue-900"
-                      : "text-gray-700 hover:bg-blue-100 hover:text-blue-800"
+                      : "text-gray-700 hover:bg-blue-200 hover:text-blue-900"
                   }`}
                 >
-                  <Icon size={20} />
+                  <Icon size={22} />
 
                   {!collapsed && <span>{item.name}</span>}
 
@@ -183,7 +199,7 @@ export default function TeacherLayout({
         </div>
 
         {/* CONTENT */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 md:p-6 max-w-[1400px] mx-auto w-full">
           {children}
         </div>
       </div>
