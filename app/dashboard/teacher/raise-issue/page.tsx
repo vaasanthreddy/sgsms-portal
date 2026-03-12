@@ -20,33 +20,43 @@ export default function RaiseIssuePage() {
   const [description, setDescription] = useState("");
   const [currentDate, setCurrentDate] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [photoError, setPhotoError] = useState("");
   const [issues, setIssues] = useState<Issue[]>([]);
 
   useEffect(() => {
     setCurrentDate(new Date().toDateString());
+    loadIssues();
   }, []);
 
-  const generateIssueId = () => {
-    const number = issues.length + 1;
+  const generateIssueId = (count: number) => {
+    const number = count + 1;
     return `SGSMS-2026-${number.toString().padStart(4, "0")}`;
+  };
+
+  const loadIssues = async () => {
+    const res = await fetch("/api/issues");
+    const data = await res.json();
+    setIssues(data);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
-    const file = e.target.files[0];
 
-    if (!file.type.startsWith("image/")) {
+    const selectedFile = e.target.files[0];
+
+    if (!selectedFile.type.startsWith("image/")) {
       setPhotoError("Only image files allowed.");
       return;
     }
 
-    const preview = URL.createObjectURL(file);
+    const preview = URL.createObjectURL(selectedFile);
     setPhoto(preview);
+    setFile(selectedFile);
     setPhotoError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!issueType || !description) {
@@ -54,7 +64,7 @@ export default function RaiseIssuePage() {
       return;
     }
 
-    if (!photo) {
+    if (!file) {
       setPhotoError("Photo is mandatory.");
       return;
     }
@@ -62,22 +72,30 @@ export default function RaiseIssuePage() {
     const finalIssue =
       issueType === "Other" ? customIssue : issueType;
 
-    const newIssue: Issue = {
-      id: generateIssueId(),
-      issueName: finalIssue,
-      description,
-      status: "Pending",
-      date: currentDate,
-      photo,
-    };
+    const issueId = generateIssueId(issues.length);
 
-    setIssues([newIssue, ...issues]);
+    const formData = new FormData();
 
-    // Reset form
+    formData.append("id", issueId);
+    formData.append("issueName", finalIssue);
+    formData.append("description", description);
+    formData.append("date", currentDate);
+    formData.append("photo", file);
+
+    const res = await fetch("/api/issues", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (res.ok) {
+      loadIssues();
+    }
+
     setIssueType("");
     setCustomIssue("");
     setDescription("");
     setPhoto(null);
+    setFile(null);
     setPhotoError("");
   };
 
@@ -95,17 +113,21 @@ ${issue.description}
     `;
 
     const blob = new Blob([content], { type: "application/pdf" });
+
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
+
     a.href = url;
+
     a.download = `${issue.id}.pdf`;
+
     a.click();
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
 
-      {/* FORM */}
       <div className="bg-white p-6 rounded shadow border">
         <h2 className="text-xl font-semibold mb-4">
           Raise Infrastructure / Meal Issue
@@ -147,7 +169,6 @@ ${issue.description}
             required
           />
 
-          {/* CAMERA ONLY UPLOAD (MANDATORY) */}
           <div>
             <input
               type="file"
@@ -183,7 +204,6 @@ ${issue.description}
         </form>
       </div>
 
-      {/* HISTORY TABLE */}
       <div className="bg-white rounded shadow border">
         <div className="p-4 font-semibold border-b">
           Complaint History
@@ -199,21 +219,29 @@ ${issue.description}
               <th className="p-3 border">Action</th>
             </tr>
           </thead>
+
           <tbody>
             {issues.map((issue) => (
               <tr key={issue.id}>
                 <td className="p-3 border">{issue.id}</td>
+
                 <td className="p-3 border">{issue.issueName}</td>
+
                 <td className="p-3 border text-center">
-                  <img
-                    src={issue.photo}
-                    className="w-16 h-16 object-cover mx-auto"
-                  />
+                  {issue.photo && (
+                    <img
+                      src={issue.photo}
+                      className="w-16 h-16 object-cover mx-auto"
+                    />
+                  )}
                 </td>
+
                 <td className="p-3 border text-yellow-600">
                   {issue.status}
                 </td>
+
                 <td className="p-3 border space-x-2">
+
                   <button
                     onClick={() =>
                       router.push(
@@ -231,10 +259,12 @@ ${issue.description}
                   >
                     PDF
                   </button>
+
                 </td>
               </tr>
             ))}
           </tbody>
+
         </table>
       </div>
 

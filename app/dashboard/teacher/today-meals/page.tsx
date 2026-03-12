@@ -1,9 +1,41 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useEffect } from "react";
+
+
 
 export default function TodayMealsPage() {
+useEffect(() => {
 
+  async function loadTodayPhotos(){
+
+    const res = await fetch("/api/meals/today");
+    const data = await res.json();
+
+    const formatted:any = {};
+    const submitted:any = {};
+
+    data.forEach((row:any)=>{
+
+      if(!formatted[row.mealType]){
+        formatted[row.mealType] = {};
+      }
+
+      formatted[row.mealType][row.itemName] = row.photoUrl;
+
+      submitted[row.mealType] = true;
+
+    });
+
+    setMealPhotos(formatted);
+    setSubmittedMeals(submitted);
+
+  }
+
+  loadTodayPhotos();
+
+},[]);
   // 🔵 FULL WEEKLY MENU
   const weeklyMenu = {
     Monday: {
@@ -182,38 +214,81 @@ const schoolId = "a833c50d-8faf-4706-8469-14d1920b3022";
                 <div className="w-1/3">{item}</div>
 
                 <div className="w-1/3 text-center">
-                  {mealPhotos[meal]?.[item] ? (
-                    <img
-                      src={mealPhotos[meal][item]}
-                      className="h-20 mx-auto rounded shadow"
-                    />
-                  ) : (
-                    <button
-                      disabled={submittedMeals[meal]}
-                      onClick={() => startCamera(meal, item)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded"
-                    >
-                      Open Camera
-                    </button>
-                  )}
+                {mealPhotos?.[meal]?.[item] ? (
+
+  <div className="flex flex-col items-center">
+
+    <img
+      src={mealPhotos[meal][item]}
+      className="h-20 mx-auto rounded shadow"
+    />
+
+    {!submittedMeals[meal] && (
+      <button
+        className="mt-1 text-red-600 text-sm"
+        onClick={async () => {
+
+          await fetch("/api/meals/remove",{
+            method:"POST",
+            headers:{ "Content-Type":"application/json"},
+            body: JSON.stringify({
+              mealType: meal,
+              itemName: item,
+              schoolId
+            })
+          });
+
+          setMealPhotos((prev:any)=>{
+            const updated = {...prev};
+            if(updated[meal]){
+              delete updated[meal][item];
+            }
+            return updated;
+          });
+
+        }}
+      >
+        Remove
+      </button>
+    )}
+
+  </div>
+
+) : (
+
+  <button
+    disabled={submittedMeals[meal]}
+    onClick={() => startCamera(meal, item)}
+    className="bg-blue-600 text-white px-3 py-1 rounded"
+  >
+    Open Camera
+  </button>
+
+)}
                 </div>
               </div>
             ))}
 
-            <div className="text-right mt-4">
-              {submittedMeals[meal] ? (
-                <span className="bg-green-600 text-white px-6 py-2 rounded">
-                  Submitted
-                </span>
-              ) : (
-                <button
-                  onClick={() => handleSubmit(meal)}
-                  className="bg-blue-900 text-white px-6 py-2 rounded"
-                >
-                  Submit
-                </button>
-              )}
-            </div>
+          <div className="text-right mt-4">
+
+  {submittedMeals[meal] ? (
+
+    <span className="bg-green-600 text-white px-6 py-2 rounded">
+      Submitted
+    </span>
+
+  ) : (
+
+    <button
+      onClick={()=>handleSubmit(meal)}
+      className="bg-blue-900 text-white px-6 py-2 rounded"
+    >
+      Submit
+    </button>
+
+  )}
+
+</div>
           </div>
         ))}
 

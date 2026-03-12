@@ -1,0 +1,22 @@
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(req:Request){
+
+  const {searchParams} = new URL(req.url);
+  const studentId = searchParams.get("studentId");
+
+  if(!studentId){
+    return NextResponse.json([]);
+  }
+
+  const records = await prisma.attendance.findMany({
+    where:{studentId},
+    orderBy:{date:"desc"}
+  });
+
+  return NextResponse.json(records);
+
+}

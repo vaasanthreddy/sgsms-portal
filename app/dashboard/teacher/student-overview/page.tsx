@@ -1,271 +1,559 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import { useEffect,useState } from "react"
 
-export default function StudentOverviewPage() {
+type Student={
+ id:string
+ name:string
+ class:string
+ parentContact:string
+}
 
-  const [studentId, setStudentId] = useState("");
-  const [studentData, setStudentData] = useState<any>(null);
+type MealRecord={
+ meal:string
+ date:string
+ photo?:string
+ status?:string
+}
 
-  // ✅ STUDENT DATABASE
-  const studentsDB: any = {
-    STU101: {
-      name: "Rahul Kumar",
-      class: "8th Class",
-      section: "A",
-      rollNo: "23",
-      academicYear: "2025-2026",
-      classTeacher: "Mrs. Kavitha",
-      medium: "English",
-      schoolName: "ZPHS Government School",
-      district: "Hyderabad",
-      father: "Ramesh Kumar",
-      mother: "Sita Devi",
-      contact: "9876543210",
-      photo: ""
-    }
-  };
+export default function StudentOverviewPage(){
 
-  const handleSearch = () => {
-    const trimmedId = studentId.trim();
+/* -----------------------------
+STATE
+----------------------------- */
 
-    if (studentsDB[trimmedId]) {
-      setStudentData(studentsDB[trimmedId]);
-    } else {
-      alert("Student not found");
-      setStudentData(null);
-    }
-  };
+const [className,setClassName]=useState("1st")
+const [search,setSearch]=useState("")
+const [students,setStudents]=useState<Student[]>([])
+const [selected,setSelected]=useState<Student|null>(null)
 
-  const today = new Date();
-  const [viewMode, setViewMode] = useState<"weekly" | "monthly">("weekly");
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
-  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+const [records,setRecords]=useState<MealRecord[]>([])
 
-  // 🔵 WEEKLY CALCULATION
-  const getWeekDates = (baseDate: Date) => {
-    const start = new Date(baseDate);
-    const day = start.getDay();
-    start.setDate(start.getDate() - day);
+/* -----------------------------
+VIEW MODE
+----------------------------- */
 
-    const week = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      week.push(d);
-    }
-    return week;
-  };
+const [viewMode,setViewMode]=useState<"week"|"month">("week")
+const [month,setMonth]=useState(new Date().getMonth())
+const [year]=useState(new Date().getFullYear())
 
-  // 🔵 MONTHLY CALCULATION
-  const getMonthDates = (year: number, month: number) => {
-    const dates = [];
-    const totalDays = new Date(year, month + 1, 0).getDate();
+const weekDays=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+const meals=["Breakfast","Lunch","Snacks","Dinner"]
 
-    for (let i = 1; i <= totalDays; i++) {
-      dates.push(new Date(year, month, i));
-    }
-    return dates;
-  };
+/* -----------------------------
+LOAD STUDENTS
+----------------------------- */
 
-  const weekDates = getWeekDates(selectedDate);
-  const monthDates = getMonthDates(selectedYear, selectedMonth);
+useEffect(()=>{
+ loadStudents()
+},[className])
 
-  const changeWeek = (direction: number) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(selectedDate.getDate() + direction * 7);
-    setSelectedDate(newDate);
-  };
+async function loadStudents(){
 
-  const changeMonth = (direction: number) => {
-    let newMonth = selectedMonth + direction;
-    let newYear = selectedYear;
+ try{
 
-    if (newMonth < 0) {
-      newMonth = 11;
-      newYear--;
-    }
-    if (newMonth > 11) {
-      newMonth = 0;
-      newYear++;
-    }
+  const res=await fetch(`/api/students?class=${className}`)
+  const data=await res.json()
 
-    setSelectedMonth(newMonth);
-    setSelectedYear(newYear);
-  };
+  if(Array.isArray(data)) setStudents(data)
+  else if(Array.isArray(data.students)) setStudents(data.students)
+  else setStudents([])
 
-  const exportPDF = () => {
-    window.print();
-  };
+ }catch(err){
+  console.error(err)
+ }
 
-  return (
-    <div>
-      <h1 className="text-3xl font-bold text-blue-900 mb-6">
-        Student Overview
-      </h1>
+}
 
-      {/* 🔍 Search Section */}
-      <div className="bg-white shadow p-6 rounded mb-6 flex items-center gap-4">
-        <input
-          type="text"
-          placeholder="Enter Student ID (Example: STU101)"
-          value={studentId}
-          onChange={(e) => setStudentId(e.target.value)}
-          className="border p-2 rounded w-64"
-        />
-        <button
-          onClick={handleSearch}
-          className="bg-blue-900 text-white px-6 py-2 rounded"
-        >
-          Search
-        </button>
-      </div>
+/* -----------------------------
+OPEN STUDENT
+----------------------------- */
 
-      {studentData && (
-        <>
-          {/* 👤 Student Details */}
-          <div className="bg-white shadow p-6 rounded mb-6">
-            <h2 className="text-xl font-semibold text-blue-900 mb-4">
-              Student Details
-            </h2>
+async function openStudent(s:Student){
 
-            <div className="flex items-start gap-8">
+ setSelected(s)
 
-              {/* Photo Section */}
-              <div className="flex flex-col items-center">
-                <img
-                  src={studentData.photo || "/default-user.png"}
-                  alt="Student"
-                  className="w-32 h-36 object-cover rounded shadow border mb-3"
-                />
+ try{
 
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
+  const res=await fetch(`/api/student-history?studentId=${s.id}`)
+  const data=await res.json()
 
-                    const imageUrl = URL.createObjectURL(file);
+  setRecords(data || [])
 
-                    setStudentData({
-                      ...studentData,
-                      photo: imageUrl
-                    });
-                  }}
-                  className="text-sm"
-                />
-              </div>
+ }catch(err){
+  console.error(err)
+ }
 
-              {/* Info Section */}
-              <div className="grid md:grid-cols-2 gap-4 flex-1">
-                <div><strong>Name:</strong> {studentData.name}</div>
-                <div><strong>Father:</strong> {studentData.father}</div>
-                <div><strong>Mother:</strong> {studentData.mother}</div>
-                <div><strong>Contact:</strong> {studentData.contact}</div>
-                <div><strong>Class:</strong> {studentData.class}</div>
-                <div><strong>Section:</strong> {studentData.section}</div>
-                <div><strong>Roll No:</strong> {studentData.rollNo}</div>
-                <div><strong>Academic Year:</strong> {studentData.academicYear}</div>
-                <div><strong>Class Teacher:</strong> {studentData.classTeacher}</div>
-                <div><strong>Medium:</strong> {studentData.medium}</div>
-                <div><strong>School:</strong> {studentData.schoolName}</div>
-                <div><strong>District:</strong> {studentData.district}</div>
-              </div>
+}
 
-            </div>
-          </div>
+/* -----------------------------
+FILTER STUDENTS
+----------------------------- */
 
-          {/* 🍽 Meal Consumption Table */}
-          <div className="bg-white shadow rounded p-4 overflow-x-auto">
-            <h2 className="text-xl font-semibold text-blue-900 mb-4">
-              Meal Consumption
-            </h2>
+const filtered=students.filter(s=>
 
-            <div className="flex items-center gap-4 mb-4 flex-wrap">
-              <select
-                value={viewMode}
-                onChange={(e) =>
-                  setViewMode(e.target.value as "weekly" | "monthly")
-                }
-                className="border p-2 rounded"
-              >
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
+ s.name?.toLowerCase().includes(search.toLowerCase()) ||
+ s.id?.toLowerCase().includes(search.toLowerCase())
 
-              {viewMode === "weekly" && (
-                <>
-                  <button onClick={() => changeWeek(-1)} className="bg-gray-300 px-3 py-1 rounded">
-                    Previous Week
-                  </button>
-                  <button onClick={() => changeWeek(1)} className="bg-gray-300 px-3 py-1 rounded">
-                    Next Week
-                  </button>
-                </>
-              )}
+)
 
-              {viewMode === "monthly" && (
-                <>
-                  <button onClick={() => changeMonth(-1)} className="bg-gray-300 px-3 py-1 rounded">
-                    Previous Month
-                  </button>
-                  <button onClick={() => changeMonth(1)} className="bg-gray-300 px-3 py-1 rounded">
-                    Next Month
-                  </button>
-                </>
-              )}
-            </div>
+/* -----------------------------
+DATE HELPERS
+----------------------------- */
 
-            <table className="w-full border text-center">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="border p-2">S.No</th>
-                  <th className="border p-2">Date</th>
-                  <th className="border p-2">Breakfast</th>
-                  <th className="border p-2">Lunch</th>
-                  <th className="border p-2">Snacks</th>
-                  <th className="border p-2">Dinner</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(viewMode === "weekly" ? weekDates : monthDates).map(
-                  (dateObj, index) => (
-                    <tr key={index}>
-                      <td className="border p-2">{index + 1}</td>
-                      <td className="border p-2">
-                        {dateObj.toLocaleDateString()}
-                      </td>
+function getDaysInMonth(){
 
-                      {["Breakfast", "Lunch", "Snacks", "Dinner"].map(
-                        (meal, i) => (
-                          <td key={i} className="border p-2">
-                            <img
-                              src="/sample-meal.jpg"
-                              className="w-20 h-16 mx-auto rounded"
-                              alt="meal"
-                            />
-                          </td>
-                        )
-                      )}
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
+ return new Date(year,month+1,0).getDate()
 
-            <div className="text-right mt-6">
-              <button
-                onClick={exportPDF}
-                className="bg-blue-900 text-white px-6 py-2 rounded"
-              >
-                Export PDF
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
+}
+
+function getWeekDates(){
+
+ const today=new Date()
+ const first=new Date(today)
+
+ const day=today.getDay()
+
+ const diff=today.getDate()-day+1
+
+ first.setDate(diff)
+
+ const arr=[]
+
+ for(let i=0;i<7;i++){
+
+  const d=new Date(first)
+  d.setDate(first.getDate()+i)
+
+  arr.push(d)
+
+ }
+
+ return arr
+
+}
+
+function getMonthDates(){
+
+ const total=getDaysInMonth()
+
+ const arr=[]
+
+ for(let i=1;i<=total;i++){
+
+  arr.push(new Date(year,month,i))
+
+ }
+
+ return arr
+
+}
+
+/* -----------------------------
+GET MEAL
+----------------------------- */
+
+function getMeal(date:Date,meal:string){
+
+ const rec=records.find(r=>
+
+  r.meal===meal &&
+  new Date(r.date).toDateString()===date.toDateString()
+
+ )
+
+ return rec
+
+}
+
+/* -----------------------------
+MEAL CELL
+----------------------------- */
+
+function MealCell({record}:{record:any}){
+
+ if(!record) return <span className="text-red-600 text-xs">Absent</span>
+
+ if(record.photo){
+
+  return(
+   <img
+    src={record.photo}
+    className="w-14 h-14 rounded border object-cover mx-auto"
+   />
+  )
+
+ }
+
+ return <span className="text-green-600 text-xs">Present</span>
+
+}
+
+/* -----------------------------
+CHANGE MONTH
+----------------------------- */
+
+function prevMonth(){
+
+ if(month===0) return
+
+ setMonth(month-1)
+
+}
+
+function nextMonth(){
+
+ if(month===11) return
+
+ setMonth(month+1)
+
+}
+
+/* -----------------------------
+UI
+----------------------------- */
+
+return(
+
+<div className="p-6 space-y-6">
+
+{/* ============================
+SEARCH + CLASS FILTER
+============================ */}
+
+<div className="flex gap-4 items-center">
+
+<input
+className="border p-2 rounded w-80"
+placeholder="Search by student name or ID"
+value={search}
+onChange={e=>setSearch(e.target.value)}
+/>
+
+<select
+className="border p-2 rounded"
+value={className}
+onChange={e=>setClassName(e.target.value)}
+>
+
+{[
+"LKG","UKG","1st","2nd","3rd","4th",
+"5th","6th","7th","8th","9th","10th"
+].map(c=>(
+<option key={c}>{c}</option>
+))}
+
+</select>
+
+</div>
+
+{/* ============================
+STUDENT LIST
+============================ */}
+
+{!selected && (
+
+<div className="border rounded shadow bg-white w-[520px]">
+
+<table className="w-full text-sm">
+
+<thead className="bg-gray-100">
+
+<tr>
+<th className="p-2">ID</th>
+<th>Name</th>
+<th>Action</th>
+</tr>
+
+</thead>
+
+<tbody>
+
+{filtered.map(s=>(
+<tr key={s.id} className="border-t">
+
+<td className="p-2">{s.id}</td>
+<td>{s.name}</td>
+
+<td>
+<button
+onClick={()=>openStudent(s)}
+className="bg-blue-600 text-white px-3 py-1 rounded"
+>
+View
+</button>
+</td>
+
+</tr>
+))}
+
+</tbody>
+
+</table>
+
+</div>
+
+)}
+
+{/* ============================
+STUDENT PROFILE
+============================ */}
+
+{selected && (
+
+<div className="border rounded shadow bg-white p-6 space-y-8">
+
+{/* HEADER */}
+
+<div className="flex justify-between">
+
+<div>
+
+<h2 className="text-xl font-bold">
+{selected.name} ({selected.id})
+</h2>
+
+<p className="text-gray-600">
+Class {selected.class}
+</p>
+
+</div>
+
+<button
+className="border px-4 py-1 rounded"
+onClick={()=>setSelected(null)}
+>
+Back
+</button>
+
+</div>
+
+{/* BASIC INFO */}
+
+<div className="grid grid-cols-3 gap-6 text-sm">
+
+<div>
+
+<h3 className="font-semibold mb-2">Basic Info</h3>
+
+<p><b>ID:</b> {selected.id}</p>
+<p><b>Name:</b> {selected.name}</p>
+<p><b>Class:</b> {selected.class}</p>
+<p><b>Gender:</b> -</p>
+<p><b>DOB:</b> -</p>
+<p><b>Aadhaar:</b> -</p>
+
+</div>
+
+<div>
+
+<h3 className="font-semibold mb-2">Family</h3>
+
+<p><b>Parent Contact:</b> {selected.parentContact}</p>
+<p><b>Father Name:</b> -</p>
+<p><b>Mother Name:</b> -</p>
+<p><b>Guardian:</b> -</p>
+<p><b>Annual Income:</b> -</p>
+
+</div>
+
+<div>
+
+<h3 className="font-semibold mb-2">Address</h3>
+
+<p><b>Village:</b> -</p>
+<p><b>Mandal:</b> -</p>
+<p><b>District:</b> -</p>
+<p><b>State:</b> -</p>
+<p><b>Pincode:</b> -</p>
+
+</div>
+
+</div>
+
+{/* ACADEMIC */}
+
+<div className="border p-4 rounded">
+
+<h3 className="font-semibold mb-3">
+Academic Details
+</h3>
+
+<div className="grid grid-cols-4 gap-4 text-sm">
+
+<p><b>Admission No:</b> -</p>
+<p><b>Admission Date:</b> -</p>
+<p><b>Roll No:</b> -</p>
+<p><b>Section:</b> -</p>
+
+<p><b>Medium:</b> English</p>
+<p><b>Attendance %:</b> -</p>
+<p><b>Last Rank:</b> -</p>
+<p><b>Class Teacher:</b> -</p>
+
+</div>
+
+</div>
+
+{/* HEALTH */}
+
+<div className="border p-4 rounded">
+
+<h3 className="font-semibold mb-3">
+Health Information
+</h3>
+
+<div className="grid grid-cols-4 gap-4 text-sm">
+
+<p><b>Blood Group:</b> -</p>
+<p><b>Height:</b> -</p>
+<p><b>Weight:</b> -</p>
+<p><b>Medical Notes:</b> -</p>
+
+</div>
+
+</div>
+
+{/* GOVERNMENT SCHEMES */}
+
+<div className="border p-4 rounded">
+
+<h3 className="font-semibold mb-3">
+Government Schemes
+</h3>
+
+<div className="grid grid-cols-3 gap-4 text-sm">
+
+<p>Midday Meal ✔</p>
+<p>Free Uniform ✔</p>
+<p>Scholarship ✔</p>
+<p>Free Books ✔</p>
+<p>Transport -</p>
+<p>Hostel -</p>
+
+</div>
+
+</div>
+
+{/* ============================
+MEAL MONITORING CONTROLS
+============================ */}
+
+<div className="flex gap-4 items-center">
+
+<select
+className="border p-2 rounded"
+value={viewMode}
+onChange={e=>setViewMode(e.target.value as any)}
+>
+<option value="week">Weekly</option>
+<option value="month">Monthly</option>
+</select>
+
+<select
+className="border p-2 rounded"
+value={month}
+onChange={e=>setMonth(Number(e.target.value))}
+>
+
+{[
+"Jan","Feb","Mar","Apr","May","Jun",
+"Jul","Aug","Sep","Oct","Nov","Dec"
+].map((m,i)=>(
+<option key={i} value={i}>{m}</option>
+))}
+
+</select>
+
+<button
+className="border px-3 py-1 rounded"
+onClick={prevMonth}
+>
+Prev
+</button>
+
+<button
+className="border px-3 py-1 rounded"
+onClick={nextMonth}
+>
+Next
+</button>
+
+</div>
+
+{/* ============================
+MEAL TABLE
+============================ */}
+
+<div className="overflow-x-auto border rounded">
+
+<table className="min-w-[1200px] text-sm border">
+
+<thead className="bg-gray-100">
+
+<tr>
+
+<th className="p-2">Meal</th>
+
+{(viewMode==="week" ? getWeekDates() : getMonthDates()).map(d=>(
+
+<th key={d.toDateString()} className="p-2">
+
+{d.getDate()}
+<br/>
+<span className="text-xs text-gray-500">
+{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]}
+</span>
+
+</th>
+
+))}
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{meals.map(meal=>(
+
+<tr key={meal} className="border-t">
+
+<td className="p-2 font-semibold">
+{meal}
+</td>
+
+{(viewMode==="week" ? getWeekDates() : getMonthDates()).map(date=>(
+
+<td
+key={date.toDateString()}
+className="p-2 text-center"
+>
+
+<MealCell
+record={getMeal(date,meal)}
+/>
+
+</td>
+
+))}
+
+</tr>
+
+))}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+)}
+
+</div>
+
+)
+
 }

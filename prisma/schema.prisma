@@ -17,7 +17,7 @@ model User {
   school    School?  @relation(fields: [schoolId], references: [id])
   createdAt DateTime @default(now())
 
-  attendance    Attendance[] @relation("UserAttendance")
+  attendance    Attendance[]
   notifications Notification[]
 }
 
@@ -36,20 +36,20 @@ model School {
 }
 
 model Student {
-  id            String   @id @default(uuid())
+  id            String @id @default(uuid())
   name          String
   class         String
   parentContact String
   schoolId      String
-  school        School   @relation(fields: [schoolId], references: [id])
+  school        School @relation(fields: [schoolId], references: [id])
 
-  attendance    Attendance[]
+  attendance Attendance[]
 }
 
 model Menu {
-  id          String  @id @default(uuid())
+  id          String @id @default(uuid())
   schoolId    String
-  school      School  @relation(fields: [schoolId], references: [id])
+  school      School @relation(fields: [schoolId], references: [id])
   dayOfWeek   String
   defaultMenu String
 }
@@ -65,23 +65,25 @@ model Meal {
 }
 
 model Attendance {
-  id         String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  studentId  String
-  student    Student  @relation(fields: [studentId], references: [id])
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
 
-  className  String
-  meal       String        // Breakfast / Lunch / Snacks / Dinner
+  className String
+  meal      String
+  status    String
+  photo     String?
 
-  status     String        // Present / Absent
-  photo      String?       // Base64 image (optional)
+  date DateTime
 
-  date       DateTime      @default(now())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
 
-  userId     String?
-  user       User?         @relation("UserAttendance", fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 
-  createdAt  DateTime      @default(now())
+  @@unique([studentId, meal, date])
+  @@index([date, className])
 }
 
 model Notification {
@@ -98,4 +100,107 @@ model Alert {
   school    School   @relation(fields: [schoolId], references: [id])
   issueType String
   date      DateTime @default(now())
+}
+
+model TodayMealPhoto {
+  id          String   @id @default(uuid())
+  schoolId    String
+  mealType    String
+  itemName    String
+  photoUrl    String
+  date        DateTime
+  submittedBy String
+  createdAt   DateTime @default(now())
+}
+
+model Contractor {
+  id String @id @default(cuid())
+
+  contractorId String @unique
+  name         String
+
+  startDate DateTime
+  endDate   DateTime
+
+  mealsProvided   String
+  kitchenLocation String
+
+  totalStudents Int
+  hygieneRating String
+
+  contactPerson String
+  phone         String
+  email         String
+  address       String
+
+  deliveryPercent Float
+  complaintsCount Int
+  feedbackRating  Float
+
+  deliveries  Delivery[]
+  complaints  Complaint[]
+  inspections Inspection[]
+  schools     SchoolCoverage[]
+
+  createdAt DateTime @default(now())
+}
+
+model Delivery {
+  id String @id @default(cuid())
+
+  date DateTime
+
+  breakfast Boolean
+  lunch     Boolean
+  snacks    Boolean
+  dinner    Boolean
+
+  status String
+
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+}
+
+model Complaint {
+  id String @id @default(cuid())
+
+  issue  String
+  status String
+  date   DateTime
+
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+}
+
+model Inspection {
+  id String @id @default(cuid())
+
+  date    DateTime
+  officer String
+  grade   String
+  remarks String
+
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+}
+
+model SchoolCoverage {
+  id String @id @default(cuid())
+
+  schoolId   String
+  schoolName String
+  students   Int
+
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+}
+
+model Issue {
+  id          String   @id
+  issueName   String
+  description String
+  status      String
+  date        String
+  photo       String
+  createdAt   DateTime @default(now())
 }

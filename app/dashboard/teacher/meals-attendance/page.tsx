@@ -105,7 +105,8 @@ const restoreSavedData = (cls: string, meal: string) => {
   const twoHours = 2 * 60 * 60 * 1000;
 
   if (Date.now() - parsed.timestamp < twoHours) {
-    setStudents(parsed.students);
+   // only restore attendance
+setAttendance(parsed.attendance);
     setAttendance(parsed.attendance);
     setLocked(true);
     setSubmitted(true);
@@ -125,24 +126,35 @@ const restoreSavedData = (cls: string, meal: string) => {
   setSubmitted(false);
   setAttendance({});
 
-  const res = await fetch(`/api/students?class=${cls}`);
-  const data = await res.json();
+  const res = await fetch(`/api/students?class=${cls}`)
 
-  const formatted = data.map((s: any) => ({
-    id: s.id,
-    name: s.name,
-    status: "",
-    photo: null
-  }));
+if(!res.ok){
+  console.error("Students API failed")
+  return
+}
+
+const data = await res.json()
+
+const studentsArray = Array.isArray(data) ? data : data.students || []
+
+const formatted = studentsArray.map((s:any)=>({
+  id:s.id,
+  name:s.name,
+  status:""
+}))
 
   setStudents(formatted);
+
+setTimeout(() => {
   loadAttendanceForMeal(cls, activeMeal);
+}, 100);
 
   restoreSavedData(cls, activeMeal);
 };
 const loadAttendance = async (cls: string, meal: string) => {
 
-  const res = await fetch(`/api/attendance?class=${cls}&meal=${meal}`);
+  const today = new Date().toISOString().split("T")[0];
+const res = await fetch(`/api/attendance?class=${cls}&meal=${meal}&date=${today}`);
   const data = await res.json();
 
   if (!data || data.length === 0) {
@@ -163,8 +175,24 @@ const loadAttendance = async (cls: string, meal: string) => {
   setSubmitted(true);
 };
 const loadAttendanceForMeal = async (cls: string, meal: string) => {
-  const res = await fetch(`/api/attendance?class=${cls}&meal=${meal}`);
-  const data = await res.json();
+
+  const today = new Date().toISOString().split("T")[0];
+const res = await fetch(`/api/attendance?class=${cls}&meal=${meal}&date=${today}`);
+
+ if (!res.ok) {
+  const err = await res.text();
+  console.error("API Error:", err);
+  return;
+}
+
+  const text = await res.text();
+
+  if (!text) {
+    console.warn("Empty response from API");
+    return;
+  }
+
+  const data = JSON.parse(text);
 
   if (data && data.length > 0) {
     const updatedStudents = students.map((s) => {
@@ -277,49 +305,70 @@ const loadAttendanceForMeal = async (cls: string, meal: string) => {
       }
     }
 
-    try {
+   try {
+
+  const photos: any = {}
+
+  students.forEach((s) => {
+    if (s.photo) {
+      photos[s.id] = s.photo
+    }
+  })
+
   const res = await fetch("/api/attendance/save", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       className: selectedClass,
-      meal: activeMeal, // we will make dynamic later
+      meal: activeMeal,
       students,
       attendance,
-      userId: null, // replace later with logged-in teacher ID
-    }),
-  });
-
-  const data = await res.json();
-
- if (data.success) {
-
-  const key = getStorageKey(selectedClass, activeMeal);
-
-  localStorage.setItem(
-    key,
-    JSON.stringify({
-      students,
-      attendance,
-      timestamp: Date.now()
+      photos,
+      userId: null
     })
-  );
+  })
 
-  setLocked(true);
-  setSubmitted(true);
+  // safer parsing
+ let data:any = {}
 
-  alert("Attendance Saved to Database Successfully");
-} else {
-    alert("Failed to save attendance");
+try{
+  data = await res.json()
+}catch(err){
+  console.error("Invalid JSON response")
+}
+  if (res.ok && data.success) {
+
+    const key = getStorageKey(selectedClass, activeMeal)
+
+   localStorage.setItem(
+  key,
+  JSON.stringify({
+    attendance,
+    timestamp: Date.now()
+  })
+)
+
+    setLocked(true)
+    setSubmitted(true)
+
+    alert("Attendance Saved to Database Successfully")
+
+  } else {
+
+    console.error("Save error response:", data)
+    alert("Failed to save attendance")
+
   }
 
 } catch (error) {
-  alert("Server error");
+
+  console.error("Submit error:", error)
+  alert("Server error")
+
 }
   };
-
   const presentCount = students.filter(s => attendance[s.id] === "Present").length;
 
   /* =============================
