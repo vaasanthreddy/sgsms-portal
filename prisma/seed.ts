@@ -1,5 +1,10 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
 
+const adminPassword = await bcrypt.hash("admin123", 10);
+const teacherPassword = await bcrypt.hash("teacher123", 10);
+const parentPassword = await bcrypt.hash("parent123", 10);
+const headPassword = await bcrypt.hash("head123", 10);
 const prisma = new PrismaClient();
 console.log("Creating school...");
 
@@ -100,7 +105,46 @@ async function main() {
   await prisma.student.createMany({ data: students });
 
   console.log("360 students inserted successfully");
+// ==============================
+// USER DATA
+// ==============================
 
+console.log("Adding system users...");
+
+await prisma.user.createMany({
+data:[
+{
+name:"District Admin",
+email:"admin@sgsms.com",
+password: adminPassword,
+role:"district_admin"
+},
+{
+name:"School Head",
+email:"head@sgsms.com",
+password: headPassword,
+role:"school_head",
+schoolId: school.id
+},
+{
+name:"Teacher",
+email:"teacher@sgsms.com",
+password: teacherPassword,
+role:"teacher",
+schoolId: school.id
+},
+{
+name:"Parent",
+email:"parent@sgsms.com",
+password: parentPassword,
+role:"parent",
+schoolId: school.id
+}
+],
+skipDuplicates:true
+});
+
+console.log("Users inserted successfully");
 
 
   // ==============================
@@ -167,9 +211,12 @@ feedbackRating:4.7
 
 for(const c of contractors){
 
-const contractor = await prisma.contractor.create({
+const contractor = await prisma.contractor.upsert({
+  where:{ contractorId:c.contractorId },
+  update:{},
+  create:{
 
-data:{
+
 
 contractorId:c.contractorId,
 name:c.name,
@@ -192,8 +239,8 @@ deliveryPercent:c.deliveryPercent,
 complaintsCount:c.complaintsCount,
 feedbackRating:c.feedbackRating
 
-}
 
+  }
 });
 
 
