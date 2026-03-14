@@ -84,6 +84,14 @@ const activeMeal = DEV_MODE ? manualMeal : getCurrentMeal();
   const [location, setLocation] = useState<{lat:number, lng:number} | null>(null);
 
   useEffect(() => {
+  const savedClass = localStorage.getItem("selectedClass")
+
+  if(savedClass){
+    loadClass(savedClass)
+  }
+},[])
+
+  useEffect(() => {
   const savedClass = localStorage.getItem("selectedClass");
   if(savedClass){
     loadClass(savedClass);
@@ -112,10 +120,12 @@ const restoreSavedData = (cls: string, meal: string) => {
 
   if (Date.now() - parsed.timestamp < twoHours) {
    // only restore attendance
-setAttendance(parsed.attendance);
-    setAttendance(parsed.attendance);
-    setLocked(true);
-    setSubmitted(true);
+
+  setAttendance(parsed.attendance)
+setLocked(true)
+setSubmitted(true)
+
+loadClass(cls)   // reload student list to reflect attendance status
   } else {
     localStorage.removeItem(key);
   }
