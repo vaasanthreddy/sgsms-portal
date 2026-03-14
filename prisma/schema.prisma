@@ -8,79 +8,71 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String
-  schoolId  String?
-  school    School?  @relation(fields: [schoolId], references: [id])
-  createdAt DateTime @default(now())
-
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          String
+  schoolId      String?
+  createdAt     DateTime       @default(now())
   attendance    Attendance[]
   notifications Notification[]
+  school        School?        @relation(fields: [schoolId], references: [id])
 }
 
 model School {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
   district  String
   location  String
-  createdAt DateTime @default(now())
-
-  users    User[]
-  students Student[]
-  meals    Meal[]
-  alerts   Alert[]
-  menus    Menu[]
+  createdAt DateTime  @default(now())
+  alerts    Alert[]
+  meals     Meal[]
+  menus     Menu[]
+  students  Student[]
+  users     User[]
 }
 
 model Student {
-  id            String @id @default(uuid())
+  id            String       @id @default(uuid())
   name          String
   class         String
   parentContact String
   schoolId      String
-  school        School @relation(fields: [schoolId], references: [id])
-
-  attendance Attendance[]
+  attendance    Attendance[]
+  school        School       @relation(fields: [schoolId], references: [id])
 }
 
 model Menu {
   id          String @id @default(uuid())
   schoolId    String
-  school      School @relation(fields: [schoolId], references: [id])
   dayOfWeek   String
   defaultMenu String
+  school      School @relation(fields: [schoolId], references: [id])
 }
 
 model Meal {
   id        String   @id @default(uuid())
   schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id])
   date      DateTime
   menu      String
   imageUrl  String
   timestamp DateTime @default(now())
+  school    School   @relation(fields: [schoolId], references: [id])
 }
 
 model Attendance {
-  id String @id @default(uuid())
-
+  id        String   @id @default(uuid())
   studentId String
-  student   Student @relation(fields: [studentId], references: [id])
-
-  className String
-  meal      String
+  date      DateTime
   status    String
-  photo     String?
-
-  date DateTime
-
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
+  userId    String?
+  className String
   createdAt DateTime @default(now())
+  meal      String
+  photo     String?
+  student   Student  @relation(fields: [studentId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@unique([studentId, meal, date])
   @@index([date, className])
@@ -89,17 +81,17 @@ model Attendance {
 model Notification {
   id       String   @id @default(uuid())
   parentId String
-  parent   User     @relation(fields: [parentId], references: [id])
   message  String
   date     DateTime @default(now())
+  parent   User     @relation(fields: [parentId], references: [id])
 }
 
 model Alert {
   id        String   @id @default(uuid())
   schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id])
   issueType String
   date      DateTime @default(now())
+  school    School   @relation(fields: [schoolId], references: [id])
 }
 
 model TodayMealPhoto {
@@ -114,93 +106,75 @@ model TodayMealPhoto {
 }
 
 model Contractor {
-  id String @id @default(cuid())
-
-  contractorId String @unique
-  name         String
-
-  startDate DateTime
-  endDate   DateTime
-
+  id              String           @id @default(cuid())
+  contractorId    String           @unique
+  name            String
+  startDate       DateTime
+  endDate         DateTime
   mealsProvided   String
   kitchenLocation String
-
-  totalStudents Int
-  hygieneRating String
-
-  contactPerson String
-  phone         String
-  email         String
-  address       String
-
-  deliveryPercent Float
-  complaintsCount Int
+  hygieneRating   String
+  totalStudents   Int
+  contactPerson   String
+  phone           String
+  email           String
+  address         String
   feedbackRating  Float
-
-  deliveries  Delivery[]
-  complaints  Complaint[]
-  inspections Inspection[]
-  schools     SchoolCoverage[]
-
-  createdAt DateTime @default(now())
+  createdAt       DateTime         @default(now())
+  complaintsCount Int
+  deliveryPercent Float
+  complaints      Complaint[]
+  deliveries      Delivery[]
+  inspections     Inspection[]
+  schools         SchoolCoverage[]
 }
 
 model Delivery {
-  id String @id @default(cuid())
-
-  date DateTime
-
-  breakfast Boolean
-  lunch     Boolean
-  snacks    Boolean
-  dinner    Boolean
-
-  status String
-
+  id           String     @id @default(cuid())
+  date         DateTime
+  breakfast    Boolean
+  lunch        Boolean
+  snacks       Boolean
+  dinner       Boolean
+  status       String
   contractorId String
   contractor   Contractor @relation(fields: [contractorId], references: [id])
 }
 
 model Complaint {
-  id String @id @default(cuid())
-
-  issue  String
-  status String
-  date   DateTime
-
+  id           String     @id @default(cuid())
+  issue        String
+  status       String
+  date         DateTime
   contractorId String
   contractor   Contractor @relation(fields: [contractorId], references: [id])
 }
 
 model Inspection {
-  id String @id @default(cuid())
-
-  date    DateTime
-  officer String
-  grade   String
-  remarks String
-
+  id           String     @id @default(cuid())
+  date         DateTime
+  officer      String
+  grade        String
+  remarks      String
   contractorId String
   contractor   Contractor @relation(fields: [contractorId], references: [id])
 }
 
 model SchoolCoverage {
-  id String @id @default(cuid())
-
-  schoolId   String
-  schoolName String
-  students   Int
-
+  id           String     @id @default(cuid())
+  schoolId     String
+  schoolName   String
+  students     Int
   contractorId String
   contractor   Contractor @relation(fields: [contractorId], references: [id])
 }
 
 model Issue {
   id          String   @id
-  issueName   String
   description String
-  status      String
-  date        String
   photo       String
+  status      String
   createdAt   DateTime @default(now())
+  date        String
+  issueName   String
 }

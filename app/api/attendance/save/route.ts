@@ -2,8 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import fs from "fs";
-import path from "path";
+
 
 export async function POST(req: Request) {
 
@@ -16,11 +15,7 @@ export async function POST(req: Request) {
     const today = new Date();
     today.setHours(0,0,0,0);
 
-    const uploadDir = path.join(process.cwd(),"public/uploads");
-
-    if(!fs.existsSync(uploadDir)){
-      fs.mkdirSync(uploadDir,{recursive:true});
-    }
+   
 
     for(const s of students){
 
@@ -28,19 +23,9 @@ export async function POST(req: Request) {
 
       let photoPath:string | null = null;
 
-      if(photos && photos[s.id]){
-
-        const base64Data = photos[s.id].replace(/^data:image\/png;base64,/, "");
-
-        const fileName = `${s.id}_${meal}_${Date.now()}.png`;
-
-        const filePath = path.join(uploadDir,fileName);
-
-        fs.writeFileSync(filePath,base64Data,"base64");
-
-        photoPath = `/uploads/${fileName}`;
-      }
-
+if(photos && photos[s.id]){
+  photoPath = photos[s.id]; // store base64 directly
+}
       await prisma.attendance.upsert({
 
         where:{

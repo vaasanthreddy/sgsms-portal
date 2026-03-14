@@ -42,12 +42,11 @@ const activeMeal = DEV_MODE ? manualMeal : getCurrentMeal();
     }));
 
     // also update students array (so submit validation works properly)
-    const updated = [...students];
-    const index = updated.findIndex(s => s.id === studentId);
-    if (index !== -1) {
-      updated[index].status = status;
-    }
-    setStudents(updated);
+   setStudents(prev =>
+  prev.map(s =>
+    s.id === studentId ? { ...s, status } : s
+  )
+);
   };
 
   /* =============================
@@ -85,6 +84,13 @@ const activeMeal = DEV_MODE ? manualMeal : getCurrentMeal();
   const [location, setLocation] = useState<{lat:number, lng:number} | null>(null);
 
   useEffect(() => {
+  const savedClass = localStorage.getItem("selectedClass");
+  if(savedClass){
+    loadClass(savedClass);
+  }
+}, []);
+
+  useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
       setLocation({
         lat: pos.coords.latitude,
@@ -120,6 +126,9 @@ setAttendance(parsed.attendance);
      LOAD CLASS
   ============================== */
   const loadClass = async (cls: string) => {
+
+    localStorage.setItem("selectedClass", cls);
+
   setSelectedClass(cls);
   setClassSelected(true);
   setLocked(false);
